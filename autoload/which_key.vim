@@ -1,11 +1,47 @@
 let s:desc = get(s:, 'desc', {})
 let s:cache = get(s:, 'cache', {})
+let s:buffer_cache = {}
 let s:TYPE = g:which_key#util#TYPE
+
+let s:cur_dir = fnamemodify(resolve(expand('<sfile>:p')), ':h')
+let g:which_key#extensions = map(
+      \ split(globpath(s:cur_dir.'/which_key/extensions', '*'), '\n'),
+      \ 'fnamemodify(v:val, '':t:r'')')
 
 function! which_key#register(prefix, dict) abort
   let key = a:prefix ==? '<Space>' ? ' ' : a:prefix
   let val = a:dict
   call extend(s:desc, {key:val})
+endfunction
+
+function! which_key#start_buffer(vis, ...) abort
+
+  let key = '<buffer>'
+  if empty(s:buffer_cache) || g:which_key_run_map_on_popup
+    call which_key#map#parse(key, s:buffer_cache, s:vis ==# 'gv' ? 1 : 0)
+  endif
+
+  let native = s:buffer_cache
+
+  if exists('b:which_key')
+    let external = b:which_key
+    call s:merge(external, native)
+    let s:runtime = external
+  else
+    try
+      let l:external = g:which_key#extensions#{&filetype}#
+    catch /^Vim\%((\a\+)\)\=:E121/
+    endtry
+
+    if exists('l:external')
+      call s:merge(l:external, native)
+      let s:runtime = l:external
+    else
+      let s:runtime = native
+    endif
+  endif
+
+  call which_key#window#open(s:runtime)
 endfunction
 
 function! which_key#start(vis, bang, prefix) " {{{
@@ -14,6 +50,13 @@ function! which_key#start(vis, bang, prefix) " {{{
 
   let key = a:prefix
   let s:which_key_trigger = key ==# ' ' ? 'SPC' : key
+
+  if a:prefix == '<buffer>'
+        \ || exists('b:which_key')
+        \ || index(g:which_key#extensions, &filetype) > -1
+    call which_key#start_buffer(a:vis)
+    return
+  endif
 
   if a:bang
     let s:runtime = a:prefix
