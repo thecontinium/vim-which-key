@@ -15,9 +15,9 @@ function! which_key#register(prefix, dict) abort
 endfunction
 
 function! which_key#start_buffer(vis, ...) abort
-
   let key = '<buffer>'
   if empty(s:buffer_cache) || g:which_key_run_map_on_popup
+    let s:buffer_cache = {}
     call which_key#map#parse(key, s:buffer_cache, s:vis ==# 'gv' ? 1 : 0)
   endif
 
