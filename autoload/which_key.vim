@@ -23,15 +23,19 @@ function! which_key#start_buffer(vis, ...) abort
 
   let native = s:buffer_cache
 
+  try
+    let l:external = g:which_key#extensions#{&filetype}#
+  catch /^Vim\%((\a\+)\)\=:E121/
+  endtry
+
   if exists('b:which_key')
-    let external = b:which_key
-    call s:merge(external, native)
-    let s:runtime = external
+    if get(b:, 'which_key_no_native', 0)
+      let s:runtime = external
+    else
+      call s:merge(external, native)
+      let s:runtime = external
+    endif
   else
-    try
-      let l:external = g:which_key#extensions#{&filetype}#
-    catch /^Vim\%((\a\+)\)\=:E121/
-    endtry
 
     if exists('l:external')
       call s:merge(l:external, native)
