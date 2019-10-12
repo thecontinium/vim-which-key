@@ -1,5 +1,5 @@
 let s:TYPE = g:which_key#util#TYPE
-let s:displaynames = {
+let s:default_displaynames = {
       \ ' ': 'SPC',
       \ '<C-H>': 'BS',
       \ '<C-I>': 'TAB',
@@ -13,21 +13,35 @@ function! which_key#view#prepare(runtime) abort
   return [layout, rows]
 endfunction
 
+function! which_key#view#get_displaynames()
+  if exists('g:which_key_display_names')
+    return g:which_key_display_names
+  else
+    return s:default_displaynames
+  endif
+endfunction
+
 function! s:calc_layout(mappings) abort " {{{
   let layout = {}
   let smap = filter(copy(a:mappings), 'v:key !=# "name" && !(type(v:val) == s:TYPE.list && v:val[1] == "which_key_ignore")')
   let layout.n_items = len(smap)
-  let length = values(map(smap,
-        \ 'strdisplaywidth(get(s:displaynames, toupper(v:key), v:key).'.
-        \ '(type(v:val) == s:TYPE.dict ? get(v:val, "name", "") : v:val[1]))'))
+  let displaynames = which_key#view#get_displaynames()
 
-  let maxlength = max(length) + g:which_key_hspace
+  let prefix_length = values(map(copy(smap),
+        \ 'strdisplaywidth(get(displaynames, toupper(v:key), v:key))'))
+  let suffix_length = values(map(smap,
+        \ 'strdisplaywidth(type(v:val) ==s:TYPE.dict ?'.
+        \ 'get(v:val, "name", "") : v:val[1])'))
+
+  let maxlength = max(prefix_length) + max(suffix_length)
+        \ + strdisplaywidth(g:which_key_sep) + 2
   if g:which_key_vertical
     let layout.n_rows = winheight(0) - 2
     let layout.n_cols = layout.n_items / layout.n_rows + (layout.n_items != layout.n_rows)
     let layout.col_width = maxlength
     let layout.win_dim = layout.n_cols * layout.col_width
   else
+    let maxlength += g:which_key_hspace
     let layout.n_cols = winwidth(0) / maxlength
     let layout.n_rows = layout.n_items / layout.n_cols + (fmod(layout.n_items,layout.n_cols) > 0 ? 1 : 0)
     let layout.col_width = winwidth(0) / layout.n_cols
@@ -55,10 +69,11 @@ function! s:create_rows(layout, mappings) abort
   let col = 0
   let smap = sort(filter(keys(mappings), 'v:val !=# "name"'),'1')
 
+  let displaynames = which_key#view#get_displaynames()
   if get(g:, 'which_key_align_by_seperator', 1)
     let key_max_len = 0
     for k in smap
-      let key = get(s:displaynames, toupper(k), k)
+      let key = get(displaynames, toupper(k), k)
       let width = strdisplaywidth(key)
       if width > key_max_len
         let key_max_len = width
@@ -67,7 +82,7 @@ function! s:create_rows(layout, mappings) abort
   endif
 
   for k in smap
-    let key = get(s:displaynames, toupper(k), k)
+    let key = get(displaynames, toupper(k), k)
     let desc = type(mappings[k]) == s:TYPE.dict ? get(mappings[k], "name", "") : mappings[k][1]
     if desc == 'which_key_ignore'
       continue
