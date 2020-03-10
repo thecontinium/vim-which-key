@@ -46,7 +46,6 @@ function! which_key#mappings#parse(key, dict, visual) " {{{
     if empty(mapd) || mapd.lhs =~? '<Plug>.*' || mapd.lhs =~? '<SNR>.*'
       continue
     endif
-
     let mapd.display = call(g:WhichKeyFormatFunc, [mapd.rhs])
 
     let mapd.lhs = substitute(mapd.lhs, key, '', '')
@@ -60,11 +59,6 @@ function! which_key#mappings#parse(key, dict, visual) " {{{
 
     let mapd.rhs = substitute(mapd.rhs, '<SID>', '<SNR>'.mapd['sid'].'_', 'g')
 
-    " eval the expression as the final {rhs}
-    " Ref #60
-    if mapd.expr
-      let mapd.rhs = eval(mapd.rhs)
-    endif
 
     if mapd.lhs !=# '' && mapd.display !~# 'WhichKey.*'
       if (visual && match(mapd.mode, '[vx ]') >= 0) ||
@@ -81,7 +75,13 @@ function! s:escape(mapping) abort " {{{
   let rhs = substitute(a:mapping.rhs, '\', '\\\\', 'g')
   let rhs = substitute(rhs, '<\([^<>]*\)>', '\\<\1>', 'g')
   let rhs = substitute(rhs, '"', '\\"', 'g')
-  let rhs = 'call feedkeys("'.rhs.'", "'.feedkeyargs.'")'
+  " eval the expression as at the time of selection
+  " Ref #60
+  if a:mapping.expr
+    let rhs = 'call feedkeys(eval("'.rhs.'"), "'.feedkeyargs.'")'
+  else
+    let rhs = 'call feedkeys("'.rhs.'", "'.feedkeyargs.'")'
+  endif
   return rhs
 endfunction " }}}
 
